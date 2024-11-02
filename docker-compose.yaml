@@ -1,0 +1,36 @@
+services:
+  vault:
+    image: vault:1.13.3
+    container_name: vault
+    depends_on:
+      - db
+    ports:
+      - "8200:8200"  # Expose Vault's port
+    environment:
+      VAULT_DEV_MODE: "true"      
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"  # Make Vault listen on all interfaces
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID} 
+    volumes:
+      - vault:/vault/file
+      - ./setup-vault.sh:/setup-vault.sh
+    cap_add:
+      - IPC_LOCK
+    entrypoint: ["sh", "-c", "vault server -dev -dev-root-token-id=${VAULT_DEV_ROOT_TOKEN_ID} & sleep 5; sh /setup-vault.sh; tail -f /dev/null"]
+
+  db:
+    image: postgres:17.0
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+
+volumes:
+  db:
+  vault:
